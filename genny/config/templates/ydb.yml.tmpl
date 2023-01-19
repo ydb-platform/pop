@@ -1,0 +1,27 @@
+---
+development:
+  dialect: "ydb"
+  database: "{{.opts.Prefix}}_development"
+  host: "localhost"
+  port: "2136"
+  user: "root"
+  password: "root"
+
+test:
+  dialect: "ydb"
+  database: "{{.opts.Prefix}}_test"
+  host: "localhost"
+  port: "2136"
+  user: "root"
+  password: "root"
+  _fk: true
+  parseTime: true
+  multiStatements=true
+
+production:
+  dialect: "ydb"
+  database: "{{.opts.Prefix}}_production"
+  host: "localhost"
+  port: "2136"
+  user: "root"
+  password: "root"

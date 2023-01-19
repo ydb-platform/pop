@@ -46,7 +46,7 @@ function debug_test {
   dlv test github.com/gobuffalo/pop
 }
 
-dialects="postgres cockroach mysql sqlite"
+dialects="ydb postgres cockroach mysql sqlite"
 
 $COMPOSE up --wait
 

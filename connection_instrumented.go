@@ -11,6 +11,8 @@ import (
 	pgx "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/luna-duclos/instrumentedsql"
+
+	_ "github.com/ydb-platform/ydb-go-sdk/v3"
 )
 
 const instrumentedDriverName = "instrumented-sql-driver"
@@ -57,6 +59,13 @@ func instrumentDriver(deets *ConnectionDetails, defaultDriverName string) (drive
 			return "", "", err
 		}
 		newDriverName = instrumentedDriverName + "-" + nameSQLite3
+	case nameYDB:
+		db, err := sql.Open(nameYDB, deets.URL)
+		defer db.Close()
+		if err != nil {
+			return "", "", err
+		}
+		dr = db.Driver()
 	}
 
 	sqlDriverLock.Lock()
@@ -84,10 +93,12 @@ func instrumentDriver(deets *ConnectionDetails, defaultDriverName string) (drive
 // a custom driver name when using instrumentation, this detection would fail
 // otherwise.
 func openPotentiallyInstrumentedConnection(c dialect, dsn string) (*sqlx.DB, error) {
+	println(dsn)
 	driverName, dialect, err := instrumentDriver(c.Details(), c.DefaultDriver())
 	if err != nil {
 		return nil, err
 	}
+	println(dsn)
 
 	con, err := sql.Open(driverName, dsn)
 	if err != nil {
