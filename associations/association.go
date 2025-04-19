@@ -4,7 +4,7 @@ import (
 	"reflect"
 
 	"github.com/gobuffalo/nulls"
-	"github.com/gobuffalo/pop/v6/columns"
+	"github.com/ydb-platform/pop/v6/columns"
 )
 
 // Association represents a definition of a model association
@@ -75,7 +75,7 @@ type AssociationAfterCreatable interface {
 // AssociationCreatableStatement a association that defines
 // create statements on database.
 type AssociationCreatableStatement interface {
-	Statements() []AssociationStatement
+	Statements(fullStyleQueryInserting bool) []AssociationStatement
 	Association
 }
 

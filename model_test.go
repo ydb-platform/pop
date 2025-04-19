@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gobuffalo/pop/v6/testdata/models/a"
-	"github.com/gobuffalo/pop/v6/testdata/models/ac"
-	"github.com/gobuffalo/pop/v6/testdata/models/b"
-	"github.com/gobuffalo/pop/v6/testdata/models/bc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ydb-platform/pop/v6/testdata/models/a"
+	"github.com/ydb-platform/pop/v6/testdata/models/ac"
+	"github.com/ydb-platform/pop/v6/testdata/models/b"
+	"github.com/ydb-platform/pop/v6/testdata/models/bc"
 )
 
 func Test_Model_TableName(t *testing.T) {
@@ -205,7 +205,7 @@ func Test_WhereID(t *testing.T) {
 	r := require.New(t)
 	m := Model{Value: &testPrefixID{ID: 1}}
 
-	r.Equal("foo_bar.custom_id = ?", m.WhereID())
+	r.Equal("foo.bar.custom_id = ?", m.WhereID())
 	r.Equal("foo_bar.custom_id = :custom_id", m.WhereNamedID())
 
 	type testNormalID struct {

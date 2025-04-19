@@ -6,7 +6,7 @@ import (
 
 	"github.com/gobuffalo/flect"
 	"github.com/gobuffalo/nulls"
-	"github.com/gobuffalo/pop/v6/internal/defaults"
+	"github.com/ydb-platform/pop/v6/internal/defaults"
 )
 
 // hasOneAssociation is a 1 to 1 kind of association. It's used on
@@ -145,7 +145,7 @@ func (h *hasOneAssociation) AfterProcess() AssociationStatement {
 	ids := []interface{}{ownerID}
 	ids = append(ids, id)
 
-	ret := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ?", h.ownedTableName, h.fkID, belongingIDFieldName)
+	ret := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ?", h.ownedTableName, h.fkID, "id")
 
 	return AssociationStatement{
 		Statement: ret,

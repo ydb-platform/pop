@@ -1,8 +1,9 @@
+//go:build appengine
 // +build appengine
 
 package pop
 
-import "github.com/gobuffalo/fizz"
+import "github.com/ydb-platform/fizz"
 
 func newSchemaMigrations(name string) fizz.Table {
 	return fizz.Table{

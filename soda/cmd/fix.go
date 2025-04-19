@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gobuffalo/pop/v6/fix"
 	"github.com/spf13/cobra"
+	"github.com/ydb-platform/pop/v6/fix"
 )
 
 var fixCmd = &cobra.Command{

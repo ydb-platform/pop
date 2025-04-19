@@ -11,7 +11,7 @@ import (
 	"text/template"
 
 	"github.com/gobuffalo/envy"
-	"github.com/gobuffalo/pop/v6/logging"
+	"github.com/ydb-platform/pop/v6/logging"
 	"gopkg.in/yaml.v2"
 )
 

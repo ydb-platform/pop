@@ -7,10 +7,10 @@ import (
 	"sync"
 
 	mysqld "github.com/go-sql-driver/mysql"
-	"github.com/gobuffalo/pop/v6/logging"
 	pgx "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/luna-duclos/instrumentedsql"
+	"github.com/ydb-platform/pop/v6/logging"
 )
 
 const instrumentedDriverName = "instrumented-sql-driver"
@@ -57,6 +57,8 @@ func instrumentDriver(deets *ConnectionDetails, defaultDriverName string) (drive
 			return "", "", err
 		}
 		newDriverName = instrumentedDriverName + "-" + nameSQLite3
+	case NameYDB:
+		return "", "", ErrUnimplementedInYdb
 	}
 
 	sqlDriverLock.Lock()

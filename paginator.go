@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/gobuffalo/pop/v6/internal/defaults"
+	"github.com/ydb-platform/pop/v6/internal/defaults"
 )
 
 // PaginatorPerPageDefault is the amount of results per page

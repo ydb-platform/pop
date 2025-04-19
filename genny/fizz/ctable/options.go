@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gobuffalo/attrs"
-	"github.com/gobuffalo/fizz"
 	"github.com/gobuffalo/flect/name"
+	"github.com/ydb-platform/fizz"
 )
 
 var nowFunc = time.Now

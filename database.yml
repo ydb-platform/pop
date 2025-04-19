@@ -33,3 +33,7 @@ sqlite:
   options:
     lock: true
 
+ydb:
+  dialect: "ydb"
+  url: {{ envOr "YDB_URL" "grpc://localhost:2136/local?query_mode=query&go_query_bind=numeric,declare,table_path_prefix(/local)" }}
+

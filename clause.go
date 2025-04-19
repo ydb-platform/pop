@@ -28,14 +28,18 @@ func (c clauses) Args() (args []interface{}) {
 }
 
 type fromClause struct {
-	From string
-	As   string
+	From      string
+	As        string
+	WithAlias bool
 }
 
 type fromClauses []fromClause
 
 func (c fromClause) String() string {
-	return fmt.Sprintf("%s AS %s", c.From, c.As)
+	if c.WithAlias {
+		return fmt.Sprintf("%s AS %s", c.From, c.As)
+	}
+	return c.From
 }
 
 func (c fromClauses) String() string {

@@ -30,6 +30,7 @@ type store interface {
 	PrepareNamedContext(context.Context, string) (*sqlx.NamedStmt, error)
 	TransactionContext(context.Context) (*Tx, error)
 	TransactionContextOptions(context.Context, *sql.TxOptions) (*Tx, error)
+	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 }
 
 // ContextStore wraps a store with a Context, so passes it with the functions that don't take it.

@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gobuffalo/pop/v6/columns"
 	"github.com/stretchr/testify/require"
+	"github.com/ydb-platform/pop/v6/columns"
 )
 
 func Test_Tags_TagsFor(t *testing.T) {

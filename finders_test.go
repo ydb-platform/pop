@@ -264,7 +264,7 @@ func Test_Find_Eager_Belongs_To_Pointers(t *testing.T) {
 	transaction(func(tx *Connection) {
 		r := require.New(t)
 
-		body := Body{}
+		body := Body{Shape: "spherical"}
 		err := tx.Create(&body)
 		r.NoError(err)
 

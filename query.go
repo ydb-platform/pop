@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gobuffalo/pop/v6/logging"
+	"github.com/ydb-platform/pop/v6/logging"
 )
 
 type operation string
@@ -86,8 +86,8 @@ func (q *Query) RawQuery(stmt string, args ...interface{}) *Query {
 // by defaults loads all the associations on the model,
 // but can take a variadic list of associations to load.
 //
-// 	c.Eager().Find(model, 1) // will load all associations for model.
-// 	c.Eager("Books").Find(model, 1) // will load only Book association for model.
+//	c.Eager().Find(model, 1) // will load all associations for model.
+//	c.Eager("Books").Find(model, 1) // will load only Book association for model.
 //
 // Eager also enable nested models creation:
 //
@@ -105,8 +105,8 @@ func (c *Connection) Eager(fields ...string) *Connection {
 // by defaults loads all the associations on the model,
 // but can take a variadic list of associations to load.
 //
-// 	q.Eager().Find(model, 1) // will load all associations for model.
-// 	q.Eager("Books").Find(model, 1) // will load only Book association for model.
+//	q.Eager().Find(model, 1) // will load all associations for model.
+//	q.Eager("Books").Find(model, 1) // will load only Book association for model.
 func (q *Query) Eager(fields ...string) *Query {
 	q.eager = true
 	q.eagerFields = append(q.eagerFields, fields...)
@@ -122,8 +122,8 @@ func (q *Query) disableEager() {
 // Where will append a where clause to the query. You may use `?` in place of
 // arguments.
 //
-// 	c.Where("id = ?", 1)
-// 	q.Where("id in (?)", 1, 2, 3)
+//	c.Where("id = ?", 1)
+//	q.Where("id in (?)", 1, 2, 3)
 func (c *Connection) Where(stmt string, args ...interface{}) *Query {
 	q := Q(c)
 	return q.Where(stmt, args...)
@@ -132,8 +132,8 @@ func (c *Connection) Where(stmt string, args ...interface{}) *Query {
 // Where will append a where clause to the query. You may use `?` in place of
 // arguments.
 //
-// 	q.Where("id = ?", 1)
-// 	q.Where("id in (?)", 1, 2, 3)
+//	q.Where("id = ?", 1)
+//	q.Where("id in (?)", 1, 2, 3)
 func (q *Query) Where(stmt string, args ...interface{}) *Query {
 	if q.RawSQL.Fragment != "" {
 		log(logging.Warn, "Query is setup to use raw SQL")
@@ -142,10 +142,21 @@ func (q *Query) Where(stmt string, args ...interface{}) *Query {
 	if inRegex.MatchString(stmt) {
 		var inq []string
 		for i := 0; i < len(args); i++ {
+			if val, ok := args[i].([]interface{}); ok {
+				if len(val) == 0 {
+					continue
+				}
+			}
 			inq = append(inq, "?")
 		}
-		qs := fmt.Sprintf("(%s)", strings.Join(inq, ","))
-		stmt = inRegex.ReplaceAllString(stmt, " IN "+qs)
+		if len(inq) == 0 {
+			stmt = ""
+			args = []interface{}{}
+			return q
+		} else {
+			qs := fmt.Sprintf("(%s)", strings.Join(inq, ","))
+			stmt = inRegex.ReplaceAllString(stmt, " IN "+qs)
+		}
 	}
 	q.whereClauses = append(q.whereClauses, clause{stmt, args})
 	return q
@@ -153,14 +164,14 @@ func (q *Query) Where(stmt string, args ...interface{}) *Query {
 
 // Order will append an order clause to the query.
 //
-// 	c.Order("name desc")
+//	c.Order("name desc")
 func (c *Connection) Order(stmt string, args ...interface{}) *Query {
 	return Q(c).Order(stmt, args...)
 }
 
 // Order will append an order clause to the query.
 //
-// 	q.Order("name desc")
+//	q.Order("name desc")
 func (q *Query) Order(stmt string, args ...interface{}) *Query {
 	if q.RawSQL.Fragment != "" {
 		log(logging.Warn, "Query is setup to use raw SQL")
@@ -172,14 +183,14 @@ func (q *Query) Order(stmt string, args ...interface{}) *Query {
 
 // Limit will create a query and add a limit clause to it.
 //
-// 	c.Limit(10)
+//	c.Limit(10)
 func (c *Connection) Limit(limit int) *Query {
 	return Q(c).Limit(limit)
 }
 
 // Limit will add a limit clause to the query.
 //
-// 	q.Limit(10)
+//	q.Limit(10)
 func (q *Query) Limit(limit int) *Query {
 	q.limitResults = limit
 	return q
@@ -212,7 +223,7 @@ func Q(c *Connection) *Query {
 // ToSQL will generate SQL and the appropriate arguments for that SQL
 // from the `Model` passed in.
 func (q Query) ToSQL(model *Model, addColumns ...string) (string, []interface{}) {
-	sb := q.toSQLBuilder(model, addColumns...)
+	sb := q.toSQLBuilder(model, q.Connection.Dialect.Name(), addColumns...)
 	// nil model is allowed only when if RawSQL is provided.
 	if model == nil && (q.RawSQL == nil || q.RawSQL.Fragment == "") {
 		return "", nil
@@ -222,9 +233,9 @@ func (q Query) ToSQL(model *Model, addColumns ...string) (string, []interface{})
 
 // ToSQLBuilder returns a new `SQLBuilder` that can be used to generate SQL,
 // get arguments, and more.
-func (q Query) toSQLBuilder(model *Model, addColumns ...string) *sqlBuilder {
+func (q Query) toSQLBuilder(model *Model, dialectName string, addColumns ...string) *sqlBuilder {
 	if len(q.addColumns) != 0 {
 		addColumns = q.addColumns
 	}
-	return newSQLBuilder(q, model, addColumns...)
+	return newSQLBuilder(q, model, dialectName, addColumns...)
 }

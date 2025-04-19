@@ -1,6 +1,6 @@
 package ctable
 
-import "github.com/gobuffalo/fizz"
+import "github.com/ydb-platform/fizz"
 
 type mockTranslator struct{}
 

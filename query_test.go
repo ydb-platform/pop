@@ -310,7 +310,7 @@ func Test_ToSQL(t *testing.T) {
 		query = Q(tx).Where("id = ?", 1).Join("books b", "b.user_id=?", "xx").Order("name asc")
 		q, args := query.ToSQL(user)
 
-		if tx.Dialect.Details().Dialect == "postgres" {
+		if tx.Dialect.Details().Dialect == "postgres" || tx.Dialect.Details().Dialect == NameYDB {
 			a.Equal(fmt.Sprintf("%s JOIN books b ON b.user_id=$1 WHERE id = $2 ORDER BY name asc", s), q)
 		} else {
 			a.Equal(fmt.Sprintf("%s JOIN books b ON b.user_id=? WHERE id = ? ORDER BY name asc", s), q)

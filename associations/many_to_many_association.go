@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gobuffalo/flect"
-	"github.com/gobuffalo/pop/v6/internal/defaults"
 	"github.com/gofrs/uuid"
+	"github.com/ydb-platform/pop/v6/internal/defaults"
 )
 
 type manyToManyAssociation struct {
@@ -107,7 +107,7 @@ func (m *manyToManyAssociation) BeforeSetup() error {
 	return nil
 }
 
-func (m *manyToManyAssociation) Statements() []AssociationStatement {
+func (m *manyToManyAssociation) Statements(fullStyleQueryInserting bool) []AssociationStatement {
 	var statements []AssociationStatement
 
 	modelColumnID := fmt.Sprintf("%s%s", flect.Underscore(m.model.Type().Name()), "_id")
@@ -121,25 +121,45 @@ func (m *manyToManyAssociation) Statements() []AssociationStatement {
 	}
 
 	for i := 0; i < m.fieldValue.Len(); i++ {
+		var stm string
+		var statementString string
 		v := m.fieldValue.Index(i)
 		manyIDValue := v.FieldByName("ID").Interface()
 		modelIDValue := m.model.FieldByName("ID").Interface()
-		stm := "INSERT INTO %s (%s,%s,%s,%s) SELECT ?,?,?,? WHERE NOT EXISTS (SELECT * FROM %s WHERE %s = ? AND %s = ?)"
-
 		if IsZeroOfUnderlyingType(manyIDValue) || IsZeroOfUnderlyingType(modelIDValue) {
 			continue
 		}
 
+		if !fullStyleQueryInserting {
+			stm = "INSERT INTO %s (%s,%s,%s,%s) SELECT ?,?,?,? WHERE NOT EXISTS (SELECT * FROM %s WHERE %s = ? AND %s = ?)"
+			statementString = fmt.Sprintf(stm, m.manyToManyTableName, modelColumnID, columnFieldID, "created_at", "updated_at", m.manyToManyTableName, modelColumnID, columnFieldID)
+		} else {
+			stm = `INSERT INTO %s (%s,%s,%s,%s) SELECT %s,%s,%s,%s FROM (SELECT ? AS %s, ? AS %s, ? AS %s, ? AS %s) AS input
+				   WHERE NOT EXISTS (
+				       SELECT 1 FROM %s WHERE %s = ? AND %s = ?
+					);`
+			statementString = fmt.Sprintf(stm, m.manyToManyTableName, modelColumnID, columnFieldID, "created_at", "updated_at", modelColumnID, columnFieldID, "created_at", "updated_at", modelColumnID, columnFieldID, "created_at", "updated_at", m.manyToManyTableName, modelColumnID, columnFieldID)
+		}
+
 		associationStm := AssociationStatement{
-			Statement: fmt.Sprintf(stm, m.manyToManyTableName, modelColumnID, columnFieldID, "created_at", "updated_at", m.manyToManyTableName, modelColumnID, columnFieldID),
+			Statement: statementString,
 			Args:      []interface{}{modelIDValue, manyIDValue, time.Now(), time.Now(), modelIDValue, manyIDValue},
 		}
 
 		if m.model.FieldByName("ID").Type().Name() == "UUID" {
-			stm = "INSERT INTO %s (%s,%s,%s,%s,%s) SELECT ?,?,?,?,? WHERE NOT EXISTS (SELECT * FROM %s WHERE %s = ? AND %s = ?)"
+			if !fullStyleQueryInserting {
+				stm = "INSERT INTO %s (%s,%s,%s,%s,%s) SELECT ?,?,?,?,? WHERE NOT EXISTS (SELECT * FROM %s WHERE %s = ? AND %s = ?)"
+				statementString = fmt.Sprintf(stm, m.manyToManyTableName, "id", modelColumnID, columnFieldID, "created_at", "updated_at", m.manyToManyTableName, modelColumnID, columnFieldID)
+			} else {
+				stm = `INSERT INTO %s (%s,%s,%s,%s,%s) SELECT %s,%s,%s,%s,%s FROM (SELECT ? AS %s, ? AS %s, ? AS %s, ? AS %s, ? AS %s) AS input
+				   WHERE NOT EXISTS (
+				       SELECT 1 FROM %s WHERE %s = ? AND %s = ?
+					);`
+				statementString = fmt.Sprintf(stm, m.manyToManyTableName, "id", modelColumnID, columnFieldID, "created_at", "updated_at", "id", modelColumnID, columnFieldID, "created_at", "updated_at", "id", modelColumnID, columnFieldID, "created_at", "updated_at", m.manyToManyTableName, modelColumnID, columnFieldID)
+			}
 			id, _ := uuid.NewV4()
 			associationStm = AssociationStatement{
-				Statement: fmt.Sprintf(stm, m.manyToManyTableName, "id", modelColumnID, columnFieldID, "created_at", "updated_at", m.manyToManyTableName, modelColumnID, columnFieldID),
+				Statement: statementString,
 				Args:      []interface{}{id, modelIDValue, manyIDValue, time.Now(), time.Now(), modelIDValue, manyIDValue},
 			}
 		}

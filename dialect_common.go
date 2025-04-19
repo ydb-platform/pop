@@ -11,10 +11,10 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/gobuffalo/pop/v6/columns"
-	"github.com/gobuffalo/pop/v6/logging"
 	"github.com/gofrs/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/ydb-platform/pop/v6/columns"
+	"github.com/ydb-platform/pop/v6/logging"
 )
 
 func init() {
@@ -108,7 +108,7 @@ func genericUpdateQuery(c *Connection, model *Model, cols columns.Columns, quote
 		return 0, err
 	}
 
-	sb := query.toSQLBuilder(model)
+	sb := query.toSQLBuilder(model, c.Dialect.Name())
 	q = sb.buildWhereClauses(q)
 
 	q = sqlx.Rebind(bindType, q)
