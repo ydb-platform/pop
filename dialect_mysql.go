@@ -2,6 +2,7 @@ package pop
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -143,7 +144,7 @@ func (m *mysql) SelectMany(c *Connection, models *Model, query Query) error {
 // CreateDB creates a new database, from the given connection credentials
 func (m *mysql) CreateDB() error {
 	deets := m.ConnectionDetails
-	db, err := openPotentiallyInstrumentedConnection(m, m.urlWithoutDb())
+	db, _, err := openPotentiallyInstrumentedConnection(context.Background(), m, m.urlWithoutDb())
 	if err != nil {
 		return fmt.Errorf("error creating MySQL database %s: %w", deets.Database, err)
 	}
@@ -165,7 +166,7 @@ func (m *mysql) CreateDB() error {
 // DropDB drops an existing database, from the given connection credentials
 func (m *mysql) DropDB() error {
 	deets := m.ConnectionDetails
-	db, err := openPotentiallyInstrumentedConnection(m, m.urlWithoutDb())
+	db, _, err := openPotentiallyInstrumentedConnection(context.Background(), m, m.urlWithoutDb())
 	if err != nil {
 		return fmt.Errorf("error dropping MySQL database %s: %w", deets.Database, err)
 	}
@@ -193,7 +194,7 @@ func (m *mysql) FizzTranslator() fizz.Translator {
 
 func (m *mysql) DumpSchema(w io.Writer) error {
 	deets := m.Details()
-	cmd := exec.Command("mysqldump", "-d", "-h", deets.Host, "-P", deets.Port, "-u", deets.User, fmt.Sprintf("--password=%s", deets.Password), deets.Database)
+	cmd := exec.Command("mysqldump", "--protocol", "TCP", "-d", "-h", deets.Host, "-P", deets.Port, "-u", deets.User, fmt.Sprintf("--password=%s", deets.Password), deets.Database)
 	if deets.Port == "socket" {
 		cmd = exec.Command("mysqldump", "-d", "-S", deets.Host, "-u", deets.User, fmt.Sprintf("--password=%s", deets.Password), deets.Database)
 	}

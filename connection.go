@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -112,25 +111,15 @@ func (c *Connection) Open() error {
 	}
 	details := c.Dialect.Details()
 
-	db, err := openPotentiallyInstrumentedConnection(c.Dialect, c.Dialect.URL())
+	db, pool, err := openPotentiallyInstrumentedConnection(c.Context(), c.Dialect, c.Dialect.URL())
 	if err != nil {
 		return err
 	}
 
-	db.SetMaxOpenConns(details.Pool)
-	if details.IdlePool != 0 {
-		db.SetMaxIdleConns(details.IdlePool)
-	}
-	if details.ConnMaxLifetime > 0 {
-		db.SetConnMaxLifetime(details.ConnMaxLifetime)
-	}
-	if details.ConnMaxIdleTime > 0 {
-		db.SetConnMaxIdleTime(details.ConnMaxIdleTime)
-	}
 	if details.Unsafe {
 		db = db.Unsafe()
 	}
-	c.Store = &dB{db}
+	c.Store = &dB{DB: db, p: pool}
 
 	if d, ok := c.Dialect.(afterOpenable); ok {
 		if err := d.AfterOpen(c); err != nil {
@@ -311,7 +300,7 @@ func (c *Connection) setID(id ...string) {
 		c.ID = fmt.Sprintf("%s-%s", prefix, body)
 	} else {
 		prefix := "conn"
-		body := rand.Int()
+		body := randx.NonNegativeInt()
 
 		if c.TX != nil {
 			prefix = "tx"

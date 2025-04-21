@@ -25,7 +25,7 @@ func Test_String_Parallel(t *testing.T) {
 		go func() {
 			id := String(30)
 			if len(id) != 30 {
-				t.FailNow()
+				t.Fail()
 			}
 			wg.Done()
 		}()

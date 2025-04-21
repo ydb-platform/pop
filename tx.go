@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/ydb-platform/pop/v6/internal/randx"
 	"math/rand"
 	"time"
 
@@ -18,11 +20,16 @@ func init() {
 type Tx struct {
 	ID int
 	*sqlx.Tx
+	db   *sql.DB
+	pool *pgxpool.Pool
 }
 
-func newTX(ctx context.Context, db *dB, opts *sql.TxOptions) (*Tx, error) {
+func newTX(ctx context.Context, db *dB, pool *pgxpool.Pool, opts *sql.TxOptions) (*Tx, error) {
+
 	t := &Tx{
-		ID: rand.Int(),
+		ID:   randx.NonNegativeInt(),
+		db:   db.SQLDB(),
+		pool: pool,
 	}
 	tx, err := db.BeginTxx(ctx, opts)
 	t.Tx = tx
@@ -30,6 +37,18 @@ func newTX(ctx context.Context, db *dB, opts *sql.TxOptions) (*Tx, error) {
 		return nil, fmt.Errorf("could not create new transaction: %w", err)
 	}
 	return t, nil
+}
+
+func (tx *Tx) SQLDB() *sql.DB {
+	return tx.db
+}
+
+func (tx *Tx) PGXPool() *pgxpool.Pool {
+	return tx.pool
+}
+
+func (tx *Tx) PingContext(ctx context.Context) error {
+	return tx.db.PingContext(ctx)
 }
 
 // TransactionContext simply returns the current transaction,
