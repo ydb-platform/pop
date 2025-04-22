@@ -1,6 +1,6 @@
 package pop
 
-import "github.com/ydb-platform/pop/v6/logging"
+import "github.com/gobuffalo/pop/v6/logging"
 
 // GroupBy will append a GROUP BY clause to the query
 func (q *Query) GroupBy(field string, fields ...string) *Query {

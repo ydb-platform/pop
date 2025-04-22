@@ -6,7 +6,7 @@ import (
 	"io"
 	"text/template"
 
-	"github.com/ydb-platform/fizz"
+	"github.com/gobuffalo/fizz"
 )
 
 // MigrationContent returns the content of a migration.

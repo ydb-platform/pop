@@ -13,13 +13,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gobuffalo/fizz"
+	"github.com/gobuffalo/fizz/translators"
+	"github.com/gobuffalo/pop/v6/columns"
+	"github.com/gobuffalo/pop/v6/internal/defaults"
+	"github.com/gobuffalo/pop/v6/logging"
 	"github.com/gofrs/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/ydb-platform/fizz"
-	"github.com/ydb-platform/fizz/translators"
-	"github.com/ydb-platform/pop/v6/columns"
-	"github.com/ydb-platform/pop/v6/internal/defaults"
-	"github.com/ydb-platform/pop/v6/logging"
 	_ "github.com/ydb-platform/ydb-go-sdk/v3"
 )
 

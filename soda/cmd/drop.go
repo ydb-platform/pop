@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gobuffalo/pop/v6"
 	"github.com/spf13/cobra"
-	"github.com/ydb-platform/pop/v6"
 )
 
 var all bool

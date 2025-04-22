@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"github.com/gobuffalo/pop/v6/logging"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/ydb-platform/pop/v6/logging"
 	"strings"
 	"sync"
 

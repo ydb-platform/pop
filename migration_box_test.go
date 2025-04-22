@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gobuffalo/pop/v6/logging"
 	"github.com/stretchr/testify/require"
-	"github.com/ydb-platform/pop/v6/logging"
 )
 
 type logEntry struct {

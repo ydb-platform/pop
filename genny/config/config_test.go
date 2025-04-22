@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/gobuffalo/genny/v2"
+	"github.com/gobuffalo/pop/v6"
 	"github.com/stretchr/testify/require"
-	"github.com/ydb-platform/pop/v6"
 )
 
 func Test_New(t *testing.T) {

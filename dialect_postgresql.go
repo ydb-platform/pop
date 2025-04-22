@@ -10,14 +10,14 @@ import (
 	"os/exec"
 	"sync"
 
+	"github.com/gobuffalo/fizz"
+	"github.com/gobuffalo/fizz/translators"
+	"github.com/gobuffalo/pop/v6/columns"
+	"github.com/gobuffalo/pop/v6/internal/defaults"
+	"github.com/gobuffalo/pop/v6/logging"
 	"github.com/jackc/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib" // Load pgx driver
 	"github.com/jmoiron/sqlx"
-	"github.com/ydb-platform/fizz"
-	"github.com/ydb-platform/fizz/translators"
-	"github.com/ydb-platform/pop/v6/columns"
-	"github.com/ydb-platform/pop/v6/internal/defaults"
-	"github.com/ydb-platform/pop/v6/logging"
 )
 
 const namePostgreSQL = "postgres"

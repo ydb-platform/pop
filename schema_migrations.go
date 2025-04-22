@@ -6,7 +6,7 @@ package pop
 import (
 	"fmt"
 
-	"github.com/ydb-platform/fizz"
+	"github.com/gobuffalo/fizz"
 )
 
 func newSchemaMigrations(name string, withIndex bool) fizz.Table {

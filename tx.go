@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/gobuffalo/pop/v6/internal/randx"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/ydb-platform/pop/v6/internal/randx"
 	"math/rand"
 	"time"
 

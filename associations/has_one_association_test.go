@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/gobuffalo/nulls"
+	"github.com/gobuffalo/pop/v6/associations"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/require"
-	"github.com/ydb-platform/pop/v6/associations"
 )
 
 type FooHasOne struct {

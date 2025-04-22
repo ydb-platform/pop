@@ -3,7 +3,7 @@
 
 package pop
 
-import "github.com/ydb-platform/fizz"
+import "github.com/gobuffalo/fizz"
 
 func newSchemaMigrations(name string) fizz.Table {
 	return fizz.Table{

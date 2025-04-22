@@ -1,8 +1,8 @@
 package cmd
 
 import (
+	"github.com/gobuffalo/pop/v6/soda/cmd/generate"
 	"github.com/spf13/cobra"
-	"github.com/ydb-platform/pop/v6/soda/cmd/generate"
 )
 
 var generateCmd = &cobra.Command{

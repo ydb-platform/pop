@@ -2,18 +2,18 @@ package generate
 
 import (
 	"context"
+	"github.com/gobuffalo/genny/v2"
 	"os"
 	"os/exec"
 
 	"github.com/gobuffalo/attrs"
-	"github.com/gobuffalo/genny/v2"
+	"github.com/gobuffalo/fizz"
 	"github.com/gobuffalo/genny/v2/gogen"
 	"github.com/gobuffalo/logger"
+	"github.com/gobuffalo/pop/v6"
+	"github.com/gobuffalo/pop/v6/genny/fizz/ctable"
+	gmodel "github.com/gobuffalo/pop/v6/genny/model"
 	"github.com/spf13/cobra"
-	"github.com/ydb-platform/fizz"
-	"github.com/ydb-platform/pop/v6"
-	"github.com/ydb-platform/pop/v6/genny/fizz/ctable"
-	gmodel "github.com/ydb-platform/pop/v6/genny/model"
 )
 
 var modelCmdConfig struct {

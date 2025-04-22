@@ -6,9 +6,9 @@ import (
 	"github.com/gobuffalo/attrs"
 	"github.com/gobuffalo/genny/v2"
 	"github.com/gobuffalo/logger"
+	"github.com/gobuffalo/pop/v6/genny/fizz/cempty"
+	"github.com/gobuffalo/pop/v6/genny/fizz/ctable"
 	"github.com/spf13/cobra"
-	"github.com/ydb-platform/pop/v6/genny/fizz/cempty"
-	"github.com/ydb-platform/pop/v6/genny/fizz/ctable"
 )
 
 // FizzCmd generates a new fizz migration

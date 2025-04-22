@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gobuffalo/fizz"
 	"github.com/gobuffalo/genny/v2"
-	"github.com/ydb-platform/fizz"
 )
 
 // New creates a generator to make files for a table based

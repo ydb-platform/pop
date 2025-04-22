@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gobuffalo/fizz"
+	"github.com/gobuffalo/fizz/translators"
 	"github.com/stretchr/testify/require"
-	"github.com/ydb-platform/fizz"
-	"github.com/ydb-platform/fizz/translators"
 )
 
 func Test_MySQL_URL_As_Is(t *testing.T) {

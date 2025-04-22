@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/gobuffalo/genny/v2"
+	"github.com/gobuffalo/pop/v6"
+	"github.com/gobuffalo/pop/v6/genny/config"
+	"github.com/gobuffalo/pop/v6/internal/defaults"
 	"github.com/spf13/cobra"
-	"github.com/ydb-platform/pop/v6"
-	"github.com/ydb-platform/pop/v6/genny/config"
-	"github.com/ydb-platform/pop/v6/internal/defaults"
 )
 
 func init() {

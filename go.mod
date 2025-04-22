@@ -1,4 +1,4 @@
-module github.com/ydb-platform/pop/v6
+module github.com/gobuffalo/pop/v6
 
 go 1.21
 
@@ -6,13 +6,14 @@ replace github.com/gobuffalo/nulls v0.4.2 => github.com/Ilyaa2/gobuffalo-nulls v
 
 replace github.com/jmoiron/sqlx v1.3.5 => github.com/Ilyaa2/jmoiron-sqlx v0.0.0-20250419141917-ee674034dff6
 
-replace github.com/ydb-platform/fizz => github.com/Ilyaa2/fizz v0.0.0-20250416191333-9e244e63296f
+replace github.com/gobuffalo/fizz => github.com/Ilyaa2/fizz v0.0.0-20250422150209-ae5332e502b5
 
 require (
 	github.com/fatih/color v1.17.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gobuffalo/attrs v1.0.3
 	github.com/gobuffalo/envy v1.10.2
+	github.com/gobuffalo/fizz v0.0.0-00010101000000-000000000000
 	github.com/gobuffalo/flect v1.0.2
 	github.com/gobuffalo/genny/v2 v2.1.0
 	github.com/gobuffalo/logger v1.0.7
@@ -28,7 +29,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
-	github.com/ydb-platform/fizz v0.0.0-20250416191333-9e244e63296f
 	github.com/ydb-platform/ydb-go-sdk/v3 v3.104.5
 	golang.org/x/sync v0.10.0
 	gopkg.in/yaml.v2 v2.4.0

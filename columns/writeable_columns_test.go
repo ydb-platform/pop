@@ -3,8 +3,8 @@ package columns_test
 import (
 	"testing"
 
+	"github.com/gobuffalo/pop/v6/columns"
 	"github.com/stretchr/testify/require"
-	"github.com/ydb-platform/pop/v6/columns"
 )
 
 func Test_Columns_WriteableString_Symbolized(t *testing.T) {
