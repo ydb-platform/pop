@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jmoiron/sqlx"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -111,7 +113,20 @@ func (c *Connection) Open() error {
 	}
 	details := c.Dialect.Details()
 
-	db, pool, err := openPotentiallyInstrumentedConnection(c.Context(), c.Dialect, c.Dialect.URL())
+	var (
+		db   *sqlx.DB
+		pool *pgxpool.Pool
+		err  error
+	)
+	if c.Dialect.Name() == NameYDB {
+		conn, err := sql.Open(c.Dialect.Name(), c.Dialect.URL())
+		if err != nil {
+			return err
+		}
+		db = sqlx.NewDb(conn, c.Dialect.Name())
+	} else {
+		db, pool, err = openPotentiallyInstrumentedConnection(c.Context(), c.Dialect, c.Dialect.URL())
+	}
 	if err != nil {
 		return err
 	}
@@ -119,7 +134,7 @@ func (c *Connection) Open() error {
 	if details.Unsafe {
 		db = db.Unsafe()
 	}
-	c.Store = &dB{DB: db, p: pool}
+	c.Store = &dB{DB: db, p: pool, DialectName: c.Dialect.Name()}
 
 	if d, ok := c.Dialect.(afterOpenable); ok {
 		if err := d.AfterOpen(c); err != nil {
@@ -173,6 +188,13 @@ func (c *Connection) Transaction(fn func(tx *Connection) error) error {
 		}
 
 		if dberr != nil {
+
+			if strings.Contains(dberr.Error(), "Transaction not found") {
+				return nil
+			}
+			/*if c.Dialect.Name() == NameYDB {
+				return nil
+			}*/
 			return fmt.Errorf("database error on committing or rolling back transaction: %w", dberr)
 		}
 
@@ -192,7 +214,14 @@ func (c *Connection) Rollback(fn func(tx *Connection)) error {
 	txlog(logging.SQL, cn, "BEGIN Transaction for Rollback ---")
 	fn(cn)
 	txlog(logging.SQL, cn, "ROLLBACK Transaction as planned ---")
-	return cn.TX.Rollback()
+	err = cn.TX.Rollback()
+	if err != nil {
+		if strings.Contains(err.Error(), "Transaction not found") {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 // NewTransaction starts a new transaction on the connection
@@ -213,7 +242,7 @@ func (c *Connection) NewTransactionContextOptions(ctx context.Context, options *
 		if err != nil {
 			return cn, fmt.Errorf("couldn't start a new transaction: %w", err)
 		}
-
+		tx.DialectName = c.Dialect.Name()
 		cn = &Connection{
 			Store:   contextStore{store: tx, ctx: ctx},
 			Dialect: c.Dialect,

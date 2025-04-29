@@ -1,6 +1,8 @@
 module github.com/gobuffalo/pop/v6
 
-go 1.21
+go 1.22
+
+toolchain go1.24.1
 
 replace github.com/gobuffalo/nulls v0.4.2 => github.com/Ilyaa2/gobuffalo-nulls v0.0.0-20250419140700-5e7c613e0ff2
 
@@ -13,7 +15,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gobuffalo/attrs v1.0.3
 	github.com/gobuffalo/envy v1.10.2
-	github.com/gobuffalo/fizz v0.0.0-00010101000000-000000000000
+	github.com/gobuffalo/fizz v1.14.4
 	github.com/gobuffalo/flect v1.0.2
 	github.com/gobuffalo/genny/v2 v2.1.0
 	github.com/gobuffalo/logger v1.0.7
@@ -27,6 +29,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/luna-duclos/instrumentedsql v1.1.3
 	github.com/mattn/go-sqlite3 v1.14.22
+	github.com/ory/x v0.0.660
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
 	github.com/ydb-platform/ydb-go-sdk/v3 v3.104.5
@@ -60,12 +63,12 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/microcosm-cc/bluemonday v1.0.22 // indirect
+	github.com/microcosm-cc/bluemonday v1.0.26 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rogpeppe/go-internal v1.9.0 // indirect
+	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/annotate v0.0.0-20160123013949-f4cad6c6324d // indirect
 	github.com/sourcegraph/syntaxhighlight v0.0.0-20170531221838-bd320f5d308e // indirect
 	github.com/spf13/pflag v1.0.5 // indirect

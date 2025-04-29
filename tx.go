@@ -20,16 +20,18 @@ func init() {
 type Tx struct {
 	ID int
 	*sqlx.Tx
-	db   *sql.DB
-	pool *pgxpool.Pool
+	db          *sql.DB
+	pool        *pgxpool.Pool
+	DialectName string
 }
 
 func newTX(ctx context.Context, db *dB, pool *pgxpool.Pool, opts *sql.TxOptions) (*Tx, error) {
 
 	t := &Tx{
-		ID:   randx.NonNegativeInt(),
-		db:   db.SQLDB(),
-		pool: pool,
+		ID:          randx.NonNegativeInt(),
+		db:          db.SQLDB(),
+		pool:        pool,
+		DialectName: db.DialectName,
 	}
 	tx, err := db.BeginTxx(ctx, opts)
 	t.Tx = tx
@@ -76,5 +78,56 @@ func (tx *Tx) Close() error {
 
 // Workaround for https://github.com/jmoiron/sqlx/issues/447
 func (tx *Tx) NamedQueryContext(ctx context.Context, query string, arg interface{}) (*sqlx.Rows, error) {
+	if tx.DialectName == NameYDB {
+		q, args, err := NamedSetupYdb(query, arg)
+		if err != nil {
+			return nil, err
+		}
+		return tx.Tx.QueryxContext(ctx, q, args...)
+	}
 	return sqlx.NamedQueryContext(ctx, tx, query, arg)
+}
+
+func (tx *Tx) NamedExecContext(ctx context.Context, query string, arg interface{}) (sql.Result, error) {
+	if tx.DialectName == NameYDB {
+		q, args, err := NamedSetupYdb(query, arg)
+		if err != nil {
+			return nil, err
+		}
+		return tx.Tx.ExecContext(ctx, q, args...)
+	}
+	return sqlx.NamedExecContext(ctx, tx, query, arg)
+}
+
+func (tx *Tx) QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+	if tx.DialectName == NameYDB {
+		q, as, err := SimpleSetup(query, args...)
+		if err != nil {
+			return nil, err
+		}
+		return tx.Tx.QueryxContext(ctx, q, as...)
+	}
+	return tx.Tx.QueryxContext(ctx, query, args...)
+}
+
+func (tx *Tx) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	if tx.DialectName == NameYDB {
+		q, as, err := SimpleSetup(query, args...)
+		if err != nil {
+			return nil, err
+		}
+		return tx.Tx.ExecContext(ctx, q, as...)
+	}
+	return tx.Tx.ExecContext(ctx, query, args...)
+}
+
+func (tx *Tx) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	if tx.DialectName == NameYDB {
+		q, as, err := SimpleSetup(query, args...)
+		if err != nil {
+			return nil, err
+		}
+		return tx.Tx.QueryContext(ctx, q, as...)
+	}
+	return tx.Tx.QueryContext(ctx, query, args...)
 }

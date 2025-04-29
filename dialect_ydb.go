@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,7 +21,9 @@ import (
 	"github.com/gobuffalo/pop/v6/logging"
 	"github.com/gofrs/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/ory/x/sqlxx"
 	_ "github.com/ydb-platform/ydb-go-sdk/v3"
+	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 )
 
 const NameYDB = "ydb"
@@ -36,6 +39,7 @@ func init() {
 
 	dialectSynonyms["ydb3"] = NameYDB
 	dialectSynonyms["ydb/3"] = NameYDB
+	dialectSynonyms["grpc"] = NameYDB
 
 	finalizer[NameYDB] = finalizerYDB
 	newConnection[NameYDB] = newYdb
@@ -87,7 +91,7 @@ func (y *ydb) Create(c *Connection, model *Model, cols columns.Columns) error {
 		for i := range args {
 			//needed for the sake of successful work of YDB driver, because ydb driver doesn't parse sql.Null types well
 
-			args[i], err = y.convertNullTypeToAppropriateNil(args[i])
+			args[i], err = convertGoTypeToAppropriateYdb(args[i])
 			if err != nil {
 				return err
 			}
@@ -123,7 +127,7 @@ func (y *ydb) Create(c *Connection, model *Model, cols columns.Columns) error {
 		w.Add(model.IDField())
 		query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", y.Quote(model.TableName()), w.QuotedString(y), w.SymbolizedString())
 		txlog(logging.SQL, c, query, model.Value)
-		if _, err := y.namedExecContext(model.ctx, c, query, model.Value); err != nil {
+		if _, err = NamedExecContext(model.ctx, c.Store, query, model.Value); err != nil {
 			return fmt.Errorf("named insert: %w", err)
 		}
 		return nil
@@ -131,17 +135,71 @@ func (y *ydb) Create(c *Connection, model *Model, cols columns.Columns) error {
 	return fmt.Errorf("can not use %s as a primary key type!", keyType)
 }
 
-func (y *ydb) convertNullTypeToAppropriateNil(value interface{}) (interface{}, error) {
+func convertGoTypeToAppropriateYdb(value interface{}) (interface{}, error) {
 	if valuer, ok := value.(driver.Valuer); ok {
-		valFromValuer, err := valuer.Value()
-		if err != nil {
-			return nil, err
-		}
-
 		if res, ok := value.(uuid.NullUUID); ok {
 			if !res.Valid {
 				return (*string)(nil), nil
 			}
+		}
+
+		if res, ok := value.(sqlxx.JSONRawMessage); ok {
+			tmp, _ := res.Value()
+			return types.JSONDocumentValue(tmp.(string)), nil
+		}
+
+		if res, ok := value.(sqlxx.NullJSONRawMessage); ok {
+			val, _ := res.Value()
+			if str, ok := val.(*string); ok && str == nil {
+				return types.NullableJSONDocumentValue((*string)(nil)), nil
+			}
+			tmp := val.(string)
+			return types.NullableJSONDocumentValue(&tmp), nil
+		}
+
+		if res, ok := value.(*uuid.NullUUID); ok {
+			if res == nil || !res.Valid {
+				return (*string)(nil), nil
+			}
+		}
+
+		if res, ok := value.(*sqlxx.JSONRawMessage); ok {
+			if value == nil {
+				return types.JSONDocumentValue(""), nil
+			}
+			tmp, _ := res.Value()
+			return types.JSONDocumentValue(tmp.(string)), nil
+		}
+
+		if res, ok := value.(*sqlxx.NullJSONRawMessage); ok {
+			if value == nil {
+				return types.NullableJSONDocumentValue((*string)(nil)), nil
+			}
+			val, _ := res.Value()
+			if str, ok := val.(*string); ok && str == nil {
+				return types.NullableJSONDocumentValue((*string)(nil)), nil
+			}
+			tmp := val.(string)
+			return types.NullableJSONDocumentValue(&tmp), nil
+		}
+
+		if v, skip := skipNilValues(value); skip {
+			return v, nil
+		}
+
+		if v, changed := sanitizeTime(value); changed {
+			return v, nil
+		}
+
+		if v, changed, err := sanitizeJsonRaw(value); err != nil {
+			return nil, err
+		} else if changed {
+			return v, nil
+		}
+
+		valFromValuer, err := valuer.Value()
+		if err != nil {
+			return nil, err
 		}
 
 		//if not null then return it without transformations
@@ -149,19 +207,17 @@ func (y *ydb) convertNullTypeToAppropriateNil(value interface{}) (interface{}, e
 			return value, nil
 		}
 		switch value.(type) {
-		case sql.NullBool:
+		case sql.NullBool, sqlxx.NullBool:
 			return (*bool)(nil), nil
-		case sql.NullString:
+		case sql.NullString, sqlxx.NullString:
 			return (*string)(nil), nil
 		case sql.NullFloat64:
 			return (*float64)(nil), nil
-		case sql.NullTime:
-			return (*time.Time)(nil), nil
 		case sql.NullInt16:
 			return (*int16)(nil), nil
 		case sql.NullInt32:
 			return (*int32)(nil), nil
-		case sql.NullInt64:
+		case sql.NullInt64, sqlxx.NullInt64:
 			return (*int64)(nil), nil
 		case sql.NullByte:
 			return (*byte)(nil), nil
@@ -169,28 +225,179 @@ func (y *ydb) convertNullTypeToAppropriateNil(value interface{}) (interface{}, e
 			return value, nil
 		}
 	}
+	if v, changed := sanitizeTime(value); changed {
+		return v, nil
+	}
 	return value, nil
 }
 
-func (y *ydb) namedExecContext(ctx context.Context, c *Connection, query string, model interface{}) (sql.Result, error) {
+func sanitizeJsonRaw(value interface{}) (interface{}, bool, error) {
+	switch v := value.(type) {
+	case json.RawMessage:
+		jsonBody, err := v.MarshalJSON()
+		if err != nil {
+			return nil, false, err
+		}
+		return types.JSONDocumentValueFromBytes(jsonBody), true, nil
+	case *json.RawMessage:
+		jsonBody, err := v.MarshalJSON()
+		if err != nil {
+			return nil, false, err
+		}
+		return types.JSONDocumentValueFromBytes(jsonBody), true, nil
+	}
+	return nil, false, nil
+}
+
+func sanitizeTime(value interface{}) (interface{}, bool) {
+	timeStub := time.Now()
+	transform := func(value interface{}) (interface{}, bool) {
+		tmp, err := value.(driver.Valuer).Value()
+		if tmp == nil {
+			return (*time.Time)(nil), true
+		}
+		if err == nil {
+			potentialZero1, ok := tmp.(time.Time)
+			if ok && potentialZero1.IsZero() {
+				return timeStub, true
+			}
+			potentialZero2, ok := tmp.(*time.Time)
+			if ok && (potentialZero2 == nil || potentialZero2.IsZero()) {
+				return timeStub, true
+			}
+		}
+		return nil, false
+	}
+	switch v := value.(type) {
+	case *sql.NullTime:
+		if v == nil {
+			return (*time.Time)(nil), true
+		}
+		tmp, changed := transform(value)
+		if changed {
+			return tmp, true
+		}
+	case *sqlxx.NullTime:
+		if v == nil {
+			return (*time.Time)(nil), true
+		}
+		tmp, changed := transform(value)
+		if changed {
+			return tmp, true
+		}
+	case sql.NullTime, sqlxx.NullTime:
+		tmp, changed := transform(value)
+		if changed {
+			return tmp, true
+		}
+	case *time.Time:
+		if v == nil {
+			return (*time.Time)(nil), true
+		}
+		if v.IsZero() {
+			return timeStub, true
+		}
+	case time.Time:
+		if v.IsZero() {
+			return timeStub, true
+		}
+	}
+	return nil, false
+}
+
+func skipNilValues(value interface{}) (interface{}, bool) {
+	switch v := value.(type) {
+	case *sql.NullBool:
+		if v == nil {
+			return (*bool)(nil), true
+		}
+	case *sqlxx.NullBool:
+		if v == nil {
+			return (*bool)(nil), true
+		}
+	case *sql.NullString:
+		if v == nil {
+			return (*string)(nil), true
+		}
+	case *sqlxx.NullString:
+		if v == nil {
+			return (*string)(nil), true
+		}
+	case *sql.NullFloat64:
+		if v == nil {
+			return (*float64)(nil), true
+		}
+	case *sql.NullTime:
+		if v == nil {
+			return (*time.Time)(nil), true
+		}
+	case *sqlxx.NullTime:
+		if v == nil {
+			return (*time.Time)(nil), true
+		}
+	case *sql.NullInt16:
+		if v == nil {
+			return (*int16)(nil), true
+		}
+	case *sql.NullInt32:
+		if v == nil {
+			return (*int32)(nil), true
+		}
+	case *sql.NullInt64:
+		if v == nil {
+			return (*int64)(nil), true
+		}
+	case *sqlxx.NullInt64:
+		if v == nil {
+			return (*int64)(nil), true
+		}
+	case *sql.NullByte:
+		if v == nil {
+			return (*byte)(nil), true
+		}
+	}
+	return nil, false
+}
+
+func NamedSetupYdb(query string, model interface{}) (string, []interface{}, error) {
 	q, args, err := sqlx.Named(query, model)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	q = sqlx.Rebind(sqlx.DOLLAR, q)
 	for i := range args {
-		args[i], err = y.convertNullTypeToAppropriateNil(args[i])
+		args[i], err = convertGoTypeToAppropriateYdb(args[i])
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 	}
-	return c.Store.ExecContext(ctx, q, args...)
+	return q, args, nil
+}
+
+func SimpleSetup(query string, args ...interface{}) (string, []interface{}, error) {
+	q := sqlx.Rebind(sqlx.DOLLAR, query)
+	var err error
+	for i := range args {
+		args[i], err = convertGoTypeToAppropriateYdb(args[i])
+		if err != nil {
+			return "", nil, err
+		}
+	}
+	return q, args, nil
+}
+
+func NamedExecContext(ctx context.Context, c store, query string, model interface{}) (sql.Result, error) {
+	q, args, err := NamedSetupYdb(query, model)
+	if err != nil {
+		return nil, err
+	}
+	return c.ExecContext(ctx, q, args...)
 }
 
 func (y *ydb) Update(connection *Connection, model *Model, columns columns.Columns) error {
 	stmt := fmt.Sprintf("UPDATE %s SET %s WHERE %s;", y.Quote(model.TableName()), columns.Writeable().QuotedUpdateString(y), model.WhereNamedIDWithTableName())
 	txlog(logging.SQL, connection, stmt, model.ID())
-	_, err := y.namedExecContext(model.ctx, connection, stmt, model.Value)
+	_, err := NamedExecContext(model.ctx, connection.Store, stmt, model.Value)
 	if err != nil {
 		return err
 	}
