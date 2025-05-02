@@ -153,7 +153,7 @@ func (a *hasManyAssociation) AfterProcess() AssociationStatement {
 	}
 
 	// This will be used to update all of our owned models' foreign keys to our ID.
-	ret := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s in (?);", a.tableName, fk, belongingIDFieldName)
+	ret := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s in (?);", a.tableName, fk, "id")
 
 	update, args, err := sqlx.In(ret, ownerID, ids)
 	if err != nil {

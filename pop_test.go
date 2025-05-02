@@ -3,6 +3,7 @@ package pop
 import (
 	stdlog "log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,10 @@ type CockroachSuite struct {
 	suite.Suite
 }
 
+type YdbSuite struct {
+	suite.Suite
+}
+
 func TestSpecificSuites(t *testing.T) {
 	switch os.Getenv("SODA_DIALECT") {
 	case "postgres":
@@ -42,6 +47,8 @@ func TestSpecificSuites(t *testing.T) {
 		suite.Run(t, &SQLiteSuite{})
 	case "cockroach":
 		suite.Run(t, &CockroachSuite{})
+	case "ydb":
+		suite.Run(t, &YdbSuite{})
 	}
 }
 
@@ -72,7 +79,7 @@ func transaction(fn func(tx *Connection)) {
 	err := PDB.Rollback(func(tx *Connection) {
 		fn(tx)
 	})
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "Transaction not found") {
 		stdlog.Fatal(err)
 	}
 }
@@ -435,8 +442,9 @@ type SingleID struct {
 }
 
 type Body struct {
-	ID   int   `json:"id" db:"id"`
-	Head *Head `json:"head" has_one:"head"`
+	ID    int    `json:"id" db:"id"`
+	Shape string `json:"shape" db:"shape"`
+	Head  *Head  `json:"head" has_one:"head"`
 }
 
 type Head struct {

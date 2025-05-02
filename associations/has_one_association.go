@@ -145,7 +145,7 @@ func (h *hasOneAssociation) AfterProcess() AssociationStatement {
 	ids := []interface{}{ownerID}
 	ids = append(ids, id)
 
-	ret := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ?", h.ownedTableName, h.fkID, belongingIDFieldName)
+	ret := fmt.Sprintf("UPDATE %s SET %s = ? WHERE %s = ?", h.ownedTableName, h.fkID, "id")
 
 	return AssociationStatement{
 		Statement: ret,

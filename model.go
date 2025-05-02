@@ -222,6 +222,10 @@ func (m *Model) setUpdatedAt(now time.Time) {
 }
 
 func (m *Model) WhereID() string {
+	return fmt.Sprintf("%s.%s = ?", m.TableName(), m.IDField())
+}
+
+func (m *Model) WhereIDWithAlias() string {
 	return fmt.Sprintf("%s.%s = ?", m.Alias(), m.IDField())
 }
 
@@ -235,6 +239,10 @@ func (m *Model) Alias() string {
 
 func (m *Model) WhereNamedID() string {
 	return fmt.Sprintf("%s.%s = :%s", m.Alias(), m.IDField(), m.IDField())
+}
+
+func (m *Model) WhereNamedIDWithTableName() string {
+	return fmt.Sprintf("%s.%s = :%s", m.TableName(), m.IDField(), m.IDField())
 }
 
 func (m *Model) isSlice() bool {

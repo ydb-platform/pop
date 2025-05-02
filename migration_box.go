@@ -33,7 +33,11 @@ func NewMigrationBox(fsys fs.FS, c *Connection) (MigrationBox, error) {
 			if content == "" {
 				return nil
 			}
-			_, err = tx.Store.Exec(content)
+			if tx.Dialect.Name() == NameYDB {
+				err = ExecuteYqlOpSeparately(tx, content)
+			} else {
+				_, err = tx.Store.Exec(content)
+			}
 			if err != nil {
 				return fmt.Errorf("error executing %s, sql: %s: %w", mf.Path, content, err)
 			}

@@ -31,29 +31,43 @@ func (q *Query) Exec() error {
 		}
 
 		txlog(logging.SQL, q.Connection, sql, args...)
-		_, err := q.Connection.Store.Exec(sql, args...)
+		_, err := q.Connection.Store.ExecContext(q.Connection.Context(), sql, args...)
 		return err
 	})
 }
 
 // ExecWithCount runs the given query, and returns the amount of
 // affected rows.
-func (q *Query) ExecWithCount() (int, error) {
+func (q *Query) ExecWithCount(columnName string) (int, error) {
 	count := int64(0)
 	return int(count), q.Connection.timeFunc("Exec", func() error {
 		sql, args := q.ToSQL(nil)
 		if sql == "" {
 			return fmt.Errorf("empty query")
 		}
+		if q.Connection.Dialect.Name() == NameYDB {
+			// Since RowsAffected doesn't work in ydb, `returning columnName` is used in the end of the query
+			sql = fmt.Sprintf("%s returning %s", sql, columnName)
+			txlog(logging.SQL, q.Connection, sql, args...)
+			rows, err := q.Connection.Store.QueryxContext(q.Connection.Context(), sql, args...)
+			if err != nil {
+				return err
+			}
+			for rows.Next() {
+				count++
+			}
+			return nil
+		} else {
+			txlog(logging.SQL, q.Connection, sql, args...)
+			result, err := q.Connection.Store.ExecContext(q.Connection.Context(), sql, args...)
+			if err != nil {
+				return err
+			}
 
-		txlog(logging.SQL, q.Connection, sql, args...)
-		result, err := q.Connection.Store.Exec(sql, args...)
-		if err != nil {
+			count, err = result.RowsAffected()
 			return err
 		}
 
-		count, err = result.RowsAffected()
-		return err
 	})
 }
 
@@ -306,7 +320,7 @@ func (c *Connection) Create(model interface{}, excludeColumns ...string) error {
 
 				stms := asos.AssociationsCreatableStatement()
 				for index := range stms {
-					statements := stms[index].Statements()
+					statements := stms[index].Statements(c.Dialect.Name() == NameYDB)
 					for _, stm := range statements {
 						err := c.RawQuery(c.Dialect.TranslateSQL(stm.Statement), stm.Args...).Exec()
 						if err != nil {

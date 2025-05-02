@@ -2,12 +2,12 @@ package generate
 
 import (
 	"context"
+	"github.com/gobuffalo/genny/v2"
 	"os"
 	"os/exec"
 
 	"github.com/gobuffalo/attrs"
 	"github.com/gobuffalo/fizz"
-	"github.com/gobuffalo/genny/v2"
 	"github.com/gobuffalo/genny/v2/gogen"
 	"github.com/gobuffalo/logger"
 	"github.com/gobuffalo/pop/v6"

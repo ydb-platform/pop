@@ -12,22 +12,24 @@ import (
 )
 
 type sqlBuilder struct {
-	Query      Query
-	Model      *Model
-	AddColumns []string
-	sql        string
-	args       []interface{}
-	isCompiled bool
-	err        error
+	Query       Query
+	Model       *Model
+	AddColumns  []string
+	DialectName string
+	sql         string
+	args        []interface{}
+	isCompiled  bool
+	err         error
 }
 
-func newSQLBuilder(q Query, m *Model, addColumns ...string) *sqlBuilder {
+func newSQLBuilder(q Query, m *Model, dialectName string, addColumns ...string) *sqlBuilder {
 	return &sqlBuilder{
-		Query:      q,
-		Model:      m,
-		AddColumns: addColumns,
-		args:       []interface{}{},
-		isCompiled: false,
+		Query:       q,
+		Model:       m,
+		AddColumns:  addColumns,
+		args:        []interface{}{},
+		isCompiled:  false,
+		DialectName: dialectName,
 	}
 }
 
@@ -159,8 +161,9 @@ func (sq *sqlBuilder) buildfromClauses() fromClauses {
 		tableName := m.TableName()
 		asName := m.Alias()
 		fc = append(fc, fromClause{
-			From: tableName,
-			As:   asName,
+			From:      tableName,
+			As:        asName,
+			WithAlias: sq.Query.Operation == Select || sq.DialectName != NameYDB,
 		})
 	}
 

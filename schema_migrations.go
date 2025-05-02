@@ -9,7 +9,7 @@ import (
 	"github.com/gobuffalo/fizz"
 )
 
-func newSchemaMigrations(name string) fizz.Table {
+func newSchemaMigrations(name string, withIndex bool) fizz.Table {
 	tab := fizz.Table{
 		Name: name,
 		Columns: []fizz.Column{
@@ -21,9 +21,14 @@ func newSchemaMigrations(name string) fizz.Table {
 				},
 			},
 		},
-		Indexes: []fizz.Index{
-			{Name: fmt.Sprintf("%s_version_idx", name), Columns: []string{"version"}, Unique: true},
-		},
+		Indexes: func(withIndex bool) []fizz.Index {
+			if withIndex {
+				return []fizz.Index{
+					{Name: fmt.Sprintf("%s_version_idx", name), Columns: []string{"version"}, Unique: true},
+				}
+			}
+			return nil
+		}(withIndex),
 	}
 	// this is for https://github.com/gobuffalo/pop/issues/659.
 	// primary key is not necessary for the migration table but it looks like

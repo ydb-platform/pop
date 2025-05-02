@@ -98,24 +98,43 @@ func (m Migrator) UpTo(step int) (applied int, err error) {
 			if exists {
 				continue
 			}
-			err = c.Transaction(func(tx *Connection) error {
-				err := mi.Run(tx)
+			if c.Dialect.Name() == NameYDB {
+				//there must be opposite migration to rollback the ddl operation in case of error
+				oppositeMi := m.findOppositeMigration(mi.Version, true)
+				if oppositeMi.Version == "" {
+					return fmt.Errorf("there is no opposite migration for %s migration version", mi.Version)
+				}
+				err = mi.Run(c)
 				if err != nil {
 					return err
 				}
-				_, err = tx.Store.Exec(fmt.Sprintf("insert into %s (version) values ('%s')", mtn, mi.Version))
+				_, err = c.Store.Exec(fmt.Sprintf("insert into `%s` (version) values ('%s')", mtn, mi.Version))
 				if err != nil {
+					e := oppositeMi.Run(c)
+					if e != nil {
+						log(logging.Error, "error while running opposite migration for version "+oppositeMi.Version, e.Error())
+					}
 					return fmt.Errorf("problem inserting migration version %s: %w", mi.Version, err)
 				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-			log(logging.Info, "> %s", mi.Name)
-			applied++
-			if step > 0 && applied >= step {
-				break
+			} else {
+				if err = c.Transaction(func(tx *Connection) error {
+					err := mi.Run(tx)
+					if err != nil {
+						return err
+					}
+					_, err = tx.Store.Exec(fmt.Sprintf("insert into %s (version) values ('%s')", mtn, mi.Version))
+					if err != nil {
+						return fmt.Errorf("problem inserting migration version %s: %w", mi.Version, err)
+					}
+					return nil
+				}); err != nil {
+					return err
+				}
+				log(logging.Info, "> %s", mi.Name)
+				applied++
+				if step > 0 && applied >= step {
+					break
+				}
 			}
 		}
 		if applied == 0 {
@@ -159,21 +178,41 @@ func (m Migrator) Down(step int) error {
 			if !exists {
 				return fmt.Errorf("migration version %s does not exist", mi.Version)
 			}
-			err = c.Transaction(func(tx *Connection) error {
-				err := mi.Run(tx)
+
+			if c.Dialect.Name() == NameYDB {
+				//there must be opposite migration to rollback the ddl operation in case of error
+				oppositeMi := m.findOppositeMigration(mi.Version, false)
+				if oppositeMi.Version == "" {
+					return fmt.Errorf("there is no opposite migration for %s migration version", mi.Version)
+				}
+				err = mi.Run(c)
 				if err != nil {
 					return err
 				}
-				err = tx.RawQuery(fmt.Sprintf("delete from %s where version = ?", mtn), mi.Version).Exec()
+				_, err = c.Store.Exec(fmt.Sprintf("delete from %s where version = ?", mtn), mi.Version)
 				if err != nil {
+					e := oppositeMi.Run(c)
+					if e != nil {
+						log(logging.Error, "error while running opposite migration for version "+oppositeMi.Version, e.Error())
+					}
 					return fmt.Errorf("problem deleting migration version %s: %w", mi.Version, err)
 				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
+			} else {
 
+				if err = c.Transaction(func(tx *Connection) error {
+					err := mi.Run(tx)
+					if err != nil {
+						return err
+					}
+					err = tx.RawQuery(fmt.Sprintf("delete from %s where version = ?", mtn), mi.Version).Exec()
+					if err != nil {
+						return fmt.Errorf("problem deleting migration version %s: %w", mi.Version, err)
+					}
+					return nil
+				}); err != nil {
+					return err
+				}
+			}
 			log(logging.Info, "< %s", mi.Name)
 		}
 		return nil
@@ -192,7 +231,7 @@ func (m Migrator) Reset() error {
 // CreateSchemaMigrations sets up a table to track migrations. This is an idempotent
 // operation.
 func CreateSchemaMigrations(c *Connection) error {
-	mtn := c.MigrationTableName()
+	mtn := c.MigrationTableName() //вернуть название таблицы с миграциями
 	err := c.Open()
 	if err != nil {
 		return fmt.Errorf("could not open connection: %w", err)
@@ -201,19 +240,33 @@ func CreateSchemaMigrations(c *Connection) error {
 	if err == nil {
 		return nil
 	}
-
-	return c.Transaction(func(tx *Connection) error {
-		schemaMigrations := newSchemaMigrations(mtn)
-		smSQL, err := c.Dialect.FizzTranslator().CreateTable(schemaMigrations)
-		if err != nil {
-			return fmt.Errorf("could not build SQL for schema migration table: %w", err)
-		}
-		err = tx.RawQuery(smSQL).Exec()
-		if err != nil {
-			return fmt.Errorf("could not execute %s: %w", smSQL, err)
-		}
-		return nil
-	})
+	if c.Dialect.Name() != NameYDB {
+		return c.Transaction(func(tx *Connection) error {
+			// we create fizz.Table which describes the table for migrations - in fact, one field is stored - migration version
+			schemaMigrations := newSchemaMigrations(mtn, true)
+			smSQL, err := c.Dialect.FizzTranslator().CreateTable(schemaMigrations)
+			if err != nil {
+				return fmt.Errorf("could not build SQL for schema migration table: %w", err)
+			}
+			err = tx.RawQuery(smSQL).Exec()
+			if err != nil {
+				return fmt.Errorf("could not execute %s: %w", smSQL, err)
+			}
+			return nil
+		})
+	}
+	//in the case of ydb, you can't make transactions for schema operations (creating tables)
+	//without an index, because you can't put an index on a primary key in ydb.
+	schemaMigrations := newSchemaMigrations(mtn, false)
+	smSQL, err := c.Dialect.FizzTranslator().CreateTable(schemaMigrations)
+	if err != nil {
+		return fmt.Errorf("could not build SQL for schema migration table: %w", err)
+	}
+	err = c.RawQuery(smSQL).Exec()
+	if err != nil {
+		return fmt.Errorf("could not execute %s: %w", smSQL, err)
+	}
+	return nil
 }
 
 // CreateSchemaMigrations sets up a table to track migrations. This is an idempotent
@@ -288,4 +341,19 @@ func printTimer(timerStart time.Time) {
 	} else {
 		log(logging.Info, "%.4f seconds", diff)
 	}
+}
+
+func (m Migrator) findOppositeMigration(version string, down bool) Migration {
+	var migrationList Migrations
+	if down {
+		migrationList = m.DownMigrations.Migrations
+	} else {
+		migrationList = m.UpMigrations.Migrations
+	}
+	for _, mi := range migrationList {
+		if mi.Version == version {
+			return mi
+		}
+	}
+	return Migration{}
 }

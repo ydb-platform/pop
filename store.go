@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -21,6 +22,12 @@ type store interface {
 	Commit() error
 	Close() error
 
+	SQLDB() *sql.DB
+	PGXPool() *pgxpool.Pool
+
+	// Context versions to wrap with contextStore
+	PingContext(context.Context) error
+
 	// Context versions to wrap with contextStore
 	SelectContext(context.Context, interface{}, string, ...interface{}) error
 	GetContext(context.Context, interface{}, string, ...interface{}) error
@@ -30,12 +37,17 @@ type store interface {
 	PrepareNamedContext(context.Context, string) (*sqlx.NamedStmt, error)
 	TransactionContext(context.Context) (*Tx, error)
 	TransactionContextOptions(context.Context, *sql.TxOptions) (*Tx, error)
+	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 }
 
 // ContextStore wraps a store with a Context, so passes it with the functions that don't take it.
 type contextStore struct {
 	store
 	ctx context.Context
+}
+
+func (s contextStore) PingContext(context.Context) error {
+	return s.store.PingContext(s.ctx)
 }
 
 func (s contextStore) Transaction() (*Tx, error) {

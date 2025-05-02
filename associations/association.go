@@ -75,7 +75,7 @@ type AssociationAfterCreatable interface {
 // AssociationCreatableStatement a association that defines
 // create statements on database.
 type AssociationCreatableStatement interface {
-	Statements() []AssociationStatement
+	Statements(fullStyleQueryInserting bool) []AssociationStatement
 	Association
 }
 

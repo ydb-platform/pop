@@ -205,7 +205,7 @@ func Test_WhereID(t *testing.T) {
 	r := require.New(t)
 	m := Model{Value: &testPrefixID{ID: 1}}
 
-	r.Equal("foo_bar.custom_id = ?", m.WhereID())
+	r.Equal("foo.bar.custom_id = ?", m.WhereID())
 	r.Equal("foo_bar.custom_id = :custom_id", m.WhereNamedID())
 
 	type testNormalID struct {

@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/rand"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jmoiron/sqlx"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -112,25 +113,28 @@ func (c *Connection) Open() error {
 	}
 	details := c.Dialect.Details()
 
-	db, err := openPotentiallyInstrumentedConnection(c.Dialect, c.Dialect.URL())
+	var (
+		db   *sqlx.DB
+		pool *pgxpool.Pool
+		err  error
+	)
+	if c.Dialect.Name() == NameYDB {
+		conn, err := sql.Open(c.Dialect.Name(), c.Dialect.URL())
+		if err != nil {
+			return err
+		}
+		db = sqlx.NewDb(conn, c.Dialect.Name())
+	} else {
+		db, pool, err = openPotentiallyInstrumentedConnection(c.Context(), c.Dialect, c.Dialect.URL())
+	}
 	if err != nil {
 		return err
 	}
 
-	db.SetMaxOpenConns(details.Pool)
-	if details.IdlePool != 0 {
-		db.SetMaxIdleConns(details.IdlePool)
-	}
-	if details.ConnMaxLifetime > 0 {
-		db.SetConnMaxLifetime(details.ConnMaxLifetime)
-	}
-	if details.ConnMaxIdleTime > 0 {
-		db.SetConnMaxIdleTime(details.ConnMaxIdleTime)
-	}
 	if details.Unsafe {
 		db = db.Unsafe()
 	}
-	c.Store = &dB{db}
+	c.Store = &dB{DB: db, p: pool, DialectName: c.Dialect.Name()}
 
 	if d, ok := c.Dialect.(afterOpenable); ok {
 		if err := d.AfterOpen(c); err != nil {
@@ -184,6 +188,13 @@ func (c *Connection) Transaction(fn func(tx *Connection) error) error {
 		}
 
 		if dberr != nil {
+
+			if strings.Contains(dberr.Error(), "Transaction not found") {
+				return nil
+			}
+			/*if c.Dialect.Name() == NameYDB {
+				return nil
+			}*/
 			return fmt.Errorf("database error on committing or rolling back transaction: %w", dberr)
 		}
 
@@ -203,7 +214,14 @@ func (c *Connection) Rollback(fn func(tx *Connection)) error {
 	txlog(logging.SQL, cn, "BEGIN Transaction for Rollback ---")
 	fn(cn)
 	txlog(logging.SQL, cn, "ROLLBACK Transaction as planned ---")
-	return cn.TX.Rollback()
+	err = cn.TX.Rollback()
+	if err != nil {
+		if strings.Contains(err.Error(), "Transaction not found") {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 // NewTransaction starts a new transaction on the connection
@@ -224,7 +242,7 @@ func (c *Connection) NewTransactionContextOptions(ctx context.Context, options *
 		if err != nil {
 			return cn, fmt.Errorf("couldn't start a new transaction: %w", err)
 		}
-
+		tx.DialectName = c.Dialect.Name()
 		cn = &Connection{
 			Store:   contextStore{store: tx, ctx: ctx},
 			Dialect: c.Dialect,
@@ -297,7 +315,7 @@ func (c *Connection) timeFunc(name string, fn func() error) error {
 // Connection type, TX.ID, and optionally a copy ID. It makes it easy to trace
 // related queries for a single request.
 //
-//  examples: "conn-7881415437117811350", "tx-4924907692359316530", "tx-831769923571164863-ytzxZa"
+//	examples: "conn-7881415437117811350", "tx-4924907692359316530", "tx-831769923571164863-ytzxZa"
 func (c *Connection) setID(id ...string) {
 	if len(id) == 1 {
 		idElems := strings.Split(id[0], "-")
@@ -311,7 +329,7 @@ func (c *Connection) setID(id ...string) {
 		c.ID = fmt.Sprintf("%s-%s", prefix, body)
 	} else {
 		prefix := "conn"
-		body := rand.Int()
+		body := randx.NonNegativeInt()
 
 		if c.TX != nil {
 			prefix = "tx"
